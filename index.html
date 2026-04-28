@@ -145,6 +145,8 @@ textarea.chat-input{resize:vertical;min-height:120px;line-height:1.6}
   <div class="nav-mode" id="nav-mode" style="display:none">
     <button class="mode-chip" id="chip-analyze" onclick="goMode('analyze')">Анализ</button>
     <button class="mode-chip" id="chip-generate" onclick="goMode('generate')">Запуск</button>
+    <button class="mode-chip" id="chip-calc" onclick="goMode('calc')">Калькулятор</button>
+    <button class="mode-chip" id="chip-negatives" onclick="goMode('negatives')">Минус-слова</button>
   </div>
   <div class="badge" style="margin-left:auto" id="nav-badge">AI Powered</div>
 </nav>
@@ -155,7 +157,7 @@ textarea.chat-input{resize:vertical;min-height:120px;line-height:1.6}
 <div id="home" class="fade">
   <div class="home-eyebrow">Amazon PPC Suite</div>
   <p class="home-sub">Анализируй существующие кампании или генерируй структуру с нуля — на основе ключевых слов конкурентов</p>
-  <div class="cards">
+  <div class="cards" style="max-width:920px;grid-template-columns:repeat(auto-fill,minmax(200px,1fr))">
     <div class="card" onclick="goMode('analyze')">
       <span class="card-arrow">→</span>
       <div class="card-icon">📊</div>
@@ -178,6 +180,28 @@ textarea.chat-input{resize:vertical;min-height:120px;line-height:1.6}
         <span class="ctag">Bulk Upload CSV</span>
         <span class="ctag">Ставки</span>
         <span class="ctag">Минус-слова</span>
+      </div>
+    </div>
+    <div class="card" onclick="goMode('calc')">
+      <span class="card-arrow">→</span>
+      <div class="card-icon">🧮</div>
+      <div class="card-title">Калькулятор ставок</div>
+      <div class="card-desc">Введи цену, себестоимость и маржу — получи целевой ACoS, максимальную ставку и break-even точку</div>
+      <div class="card-tags">
+        <span class="ctag">Целевой ACoS</span>
+        <span class="ctag">Макс. CPC</span>
+        <span class="ctag">Break-even</span>
+      </div>
+    </div>
+    <div class="card" onclick="goMode('negatives')">
+      <span class="card-arrow">→</span>
+      <div class="card-icon">🚫</div>
+      <div class="card-title">Генератор минус-слов</div>
+      <div class="card-desc">Загрузи Search Term Report — AI найдёт все нерелевантные запросы и выдаст готовый список для загрузки</div>
+      <div class="card-tags">
+        <span class="ctag">Search Term Report</span>
+        <span class="ctag">AI фильтрация</span>
+        <span class="ctag">CSV экспорт</span>
       </div>
     </div>
   </div>
@@ -331,7 +355,102 @@ textarea.chat-input{resize:vertical;min-height:120px;line-height:1.6}
   </div>
 </div>
 
-</main>
+<!-- ═══════════════════ CALCULATOR ═══════════════════ -->
+<div id="calc" style="display:none">
+  <button class="back-btn" onclick="goHome()">← Назад</button>
+  <div class="section">
+    <div class="section-header"><span>🧮</span> Калькулятор ставок и ACoS</div>
+    <div class="section-body">
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Цена продажи ($)</label>
+          <input id="c-price" class="small-input" type="number" placeholder="29.99" oninput="calcUpdate()"/>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Себестоимость ($)</label>
+          <input id="c-cogs" class="small-input" type="number" placeholder="8.00" oninput="calcUpdate()"/>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Комиссия Amazon (%)</label>
+          <input id="c-fee" class="small-input" type="number" placeholder="15" value="15" oninput="calcUpdate()"/>
+        </div>
+        <div class="form-group">
+          <label class="form-label">FBA + прочие расходы ($)</label>
+          <input id="c-fba" class="small-input" type="number" placeholder="4.50" oninput="calcUpdate()"/>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Конверсия листинга (%)</label>
+          <input id="c-cvr" class="small-input" type="number" placeholder="10" value="10" oninput="calcUpdate()"/>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Желаемая маржа после рекламы (%)</label>
+          <input id="c-margin" class="small-input" type="number" placeholder="15" value="15" oninput="calcUpdate()"/>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="calc-results" style="display:none">
+    <div class="metrics-grid" id="calc-metrics"></div>
+    <div class="section" style="margin-top:0">
+      <div class="section-header"><span>📋</span> Рекомендации по ставкам</div>
+      <div class="section-body" id="calc-tips" style="font-size:13px;line-height:1.8;color:var(--text)"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════ NEGATIVES ═══════════════════ -->
+<div id="negatives" style="display:none">
+  <button class="back-btn" onclick="goHome()">← Назад</button>
+
+  <div id="neg-upload">
+    <div class="upload-zone" id="neg-zone" onclick="document.getElementById('neg-file').click()">
+      <div class="upload-icon">🚫</div>
+      <div class="upload-title">Загрузи Search Term Report</div>
+      <div class="upload-sub">Скачай в Seller Central: Reports → Advertising → Search Term Report<br/>AI найдёт все нерелевантные запросы которые сливают бюджет</div>
+      <input id="neg-file" type="file" accept=".csv,.txt" style="display:none"/>
+    </div>
+  </div>
+
+  <div id="neg-dashboard" style="display:none">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:20px;flex-wrap:wrap">
+      <div class="file-chip">
+        <span>📄</span>
+        <span id="neg-filename"></span>
+        <span style="color:var(--muted)">·</span>
+        <span id="neg-rows" style="color:var(--muted)"></span>
+      </div>
+      <button class="btn-secondary" onclick="resetNegatives()">Загрузить другой</button>
+    </div>
+
+    <div class="section">
+      <div class="section-header">
+        <span>🤖</span> AI Анализ минус-слов
+        <div id="neg-spinner" class="spinner" style="display:none"></div>
+      </div>
+      <div class="section-body">
+        <div id="neg-chat"></div>
+      </div>
+    </div>
+
+    <div id="neg-result-section" style="display:none">
+      <div class="section">
+        <div class="section-header"><span>🚫</span> Список минус-слов (<span id="neg-count">0</span>)</div>
+        <div class="section-body">
+          <div id="neg-list" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px"></div>
+          <div style="display:flex;gap:10px;flex-wrap:wrap">
+            <button class="btn-success" onclick="downloadNegatives()">⬇️ Скачать CSV</button>
+            <button class="btn-secondary" onclick="copyNegatives()">📋 Копировать список</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
 
 <script>
 // ─── STATE ───────────────────────────────────────────────
@@ -340,7 +459,7 @@ let genLoading=false, genHistory=[], genCsvContent='', genCampaigns=[];
 
 // ─── NAVIGATION ──────────────────────────────────────────
 function goHome(){
-  ['home','analyze','generate'].forEach(id=>{
+  ['home','analyze','generate','calc','negatives'].forEach(id=>{
     document.getElementById(id).style.display = id==='home' ? 'block' : 'none';
   });
   document.getElementById('nav-mode').style.display='none';
@@ -348,12 +467,14 @@ function goHome(){
 }
 function goMode(mode){
   document.getElementById('home').style.display='none';
-  document.getElementById('analyze').style.display = mode==='analyze' ? 'block' : 'none';
-  document.getElementById('generate').style.display = mode==='generate' ? 'block' : 'none';
+  ['analyze','generate','calc','negatives'].forEach(id=>{
+    document.getElementById(id).style.display = id===mode ? 'block' : 'none';
+  });
   document.getElementById('nav-mode').style.display='flex';
   document.getElementById('nav-badge').style.marginLeft='';
-  document.getElementById('chip-analyze').classList.toggle('active', mode==='analyze');
-  document.getElementById('chip-generate').classList.toggle('active', mode==='generate');
+  ['analyze','generate','calc','negatives'].forEach(id=>{
+    document.getElementById('chip-'+id).classList.toggle('active', id===mode);
+  });
 }
 
 // ─── ANALYZER ────────────────────────────────────────────
@@ -695,7 +816,6 @@ async function genSend(){
   finally{genSetLoading(false)}
 }
 document.getElementById('gen-input').addEventListener('keydown',e=>{if(e.key==='Enter')genSend()});
-
 // ─── CLAUDE API ──────────────────────────────────────────
 async function callClaude(system,messages){
   const res=await fetch('https://api.anthropic.com/v1/messages',{
@@ -705,6 +825,144 @@ async function callClaude(system,messages){
   });
   const json=await res.json();
   return json.content?.[0]?.text||'Нет ответа.';
+}
+
+</script>
+function calcUpdate(){
+  const price=parseFloat(document.getElementById('c-price').value)||0;
+  const cogs=parseFloat(document.getElementById('c-cogs').value)||0;
+  const fee=parseFloat(document.getElementById('c-fee').value)||15;
+  const fba=parseFloat(document.getElementById('c-fba').value)||0;
+  const cvr=parseFloat(document.getElementById('c-cvr').value)||10;
+  const targetMargin=parseFloat(document.getElementById('c-margin').value)||15;
+  if(!price||!cogs){document.getElementById('calc-results').style.display='none';return;}
+
+  const amzFee=price*(fee/100);
+  const totalCost=cogs+amzFee+fba;
+  const profit=price-totalCost;
+  const breakEvenAcos=profit/price*100;
+  const targetAdSpend=profit-(price*(targetMargin/100));
+  const targetAcos=Math.max(0,targetAdSpend/price*100);
+  const maxCPC=targetAdSpend*(cvr/100);
+  const aggressiveCPC=profit*(cvr/100);
+
+  const metrics=[
+    {l:'Чистая прибыль (без рекламы)',v:`$${profit.toFixed(2)}`,c:profit>0?'var(--success)':'var(--danger)'},
+    {l:'Break-even ACoS',v:`${breakEvenAcos.toFixed(1)}%`,c:'var(--accent)'},
+    {l:'Целевой ACoS',v:`${targetAcos.toFixed(1)}%`,c:'var(--info)'},
+    {l:'Макс. ставка (CPC)',v:`$${maxCPC.toFixed(2)}`,c:'var(--success)'},
+    {l:'Агрессивная ставка',v:`$${aggressiveCPC.toFixed(2)}`,c:'var(--accent)'},
+    {l:'Маржа после рекламы',v:`${targetMargin}%`,c:'var(--muted)'},
+  ];
+  const mg=document.getElementById('calc-metrics');
+  mg.innerHTML=metrics.map(m=>`<div class="metric fade"><div class="metric-label">${m.l}</div><div class="metric-value" style="color:${m.c}">${m.v}</div></div>`).join('');
+
+  const tips=[];
+  if(breakEvenAcos<10) tips.push('⚠️ <strong>Низкая маржа</strong> — break-even ACoS очень маленький. Реклама будет сложной, рассмотри снижение себестоимости или повышение цены.');
+  else if(breakEvenAcos<20) tips.push('💡 <strong>Умеренная маржа</strong> — целевой ACoS '+targetAcos.toFixed(1)+'%. Начни с консервативными ставками $'+maxCPC.toFixed(2)+' и постепенно повышай.');
+  else tips.push('✅ <strong>Хорошая маржа</strong> — есть пространство для агрессивной рекламы. Можно тестировать ставки до $'+aggressiveCPC.toFixed(2)+'.');
+
+  tips.push('🎯 <strong>AUTO кампания:</strong> ставка $'+(maxCPC*0.7).toFixed(2)+' — для сбора данных');
+  tips.push('🎯 <strong>EXACT кампания:</strong> ставка $'+maxCPC.toFixed(2)+' — для топ ключей');
+  tips.push('🎯 <strong>BROAD кампания:</strong> ставка $'+(maxCPC*0.6).toFixed(2)+' — для охвата');
+  if(targetAcos>breakEvenAcos) tips.push('🔴 <strong>Внимание:</strong> целевой ACoS ('+targetAcos.toFixed(1)+'%) превышает break-even ('+breakEvenAcos.toFixed(1)+'%). Снизь желаемую маржу или пересмотри затраты.');
+
+  document.getElementById('calc-tips').innerHTML=tips.map(t=>`<div style="padding:8px 0;border-bottom:1px solid var(--border)">${t}</div>`).join('');
+  document.getElementById('calc-results').style.display='block';
+}
+
+// ─── NEGATIVES ───────────────────────────────────────────
+let negCsvData=[], negKeywords=[];
+const negZone=document.getElementById('neg-zone');
+negZone.addEventListener('dragover',e=>{e.preventDefault();negZone.classList.add('drag')});
+negZone.addEventListener('dragleave',()=>negZone.classList.remove('drag'));
+negZone.addEventListener('drop',e=>{e.preventDefault();negZone.classList.remove('drag');handleNegFile(e.dataTransfer.files[0])});
+document.getElementById('neg-file').addEventListener('change',e=>handleNegFile(e.target.files[0]));
+
+function handleNegFile(file){
+  if(!file) return;
+  const r=new FileReader();
+  r.onload=e=>{
+    const text=e.target.result;
+    const parsed=parseCSV(text);
+    if(!parsed.length){alert('Файл пуст или не распознан');return}
+    negCsvData=parsed;
+    document.getElementById('neg-upload').style.display='none';
+    document.getElementById('neg-dashboard').style.display='block';
+    document.getElementById('neg-filename').textContent=file.name;
+    document.getElementById('neg-rows').textContent=parsed.length+' запросов';
+    negAutoAnalyze(text.slice(0,10000));
+  };
+  r.readAsText(file);
+}
+
+function negAddMsg(role,content){
+  const div=document.getElementById('neg-chat');
+  const isUser=role==='user';
+  div.innerHTML+=`<div class="msg-row ${isUser?'user':''}"><div class="avatar ${isUser?'me':'ai'}">${isUser?'Вы':'AI'}</div><div class="bubble ${isUser?'user':'ai'}">${content}</div></div>`;
+  div.scrollTop=div.scrollHeight;
+}
+
+async function negAutoAnalyze(raw){
+  document.getElementById('neg-spinner').style.display='inline-block';
+  negAddMsg('assistant','⏳ Анализирую поисковые запросы...');
+  const sys=`Ты эксперт по Amazon PPC. Анализируй Search Term Report и определяй нерелевантные запросы для минус-слов. Отвечай ТОЛЬКО на русском.
+После анализа выведи JSON в ТОЧНО таком формате (без markdown):
+NEGATIVES_JSON: ["слово1","слово2","слово3"]`;
+  const usr=`Проанализируй этот Search Term Report и найди все нерелевантные запросы для добавления в минус-слова.\n\nДанные:\n${raw}\n\nНайди:\n1. Нерелевантные поисковые запросы (не соответствуют товару)\n2. Запросы с нулевыми продажами и высокими расходами\n3. Информационные запросы (how to, what is, diy)\n4. Детские/возрастные если не нужны\n5. Конкурентные бренды если не таргетируем\n\nВыведи краткий анализ и список NEGATIVES_JSON.`;
+  try{
+    const txt=await callClaude(sys,[{role:'user',content:usr}]);
+    document.getElementById('neg-chat').lastElementChild?.remove();
+    const jm=txt.match(/NEGATIVES_JSON:\s*(\[[\s\S]+?\])/);
+    let showTxt=txt;
+    if(jm){
+      showTxt=txt.replace(/NEGATIVES_JSON:\s*\[[\s\S]+?\]/,'').trim();
+      try{
+        negKeywords=JSON.parse(jm[1]);
+        renderNegatives();
+      }catch(e){console.warn(e)}
+    }
+    negAddMsg('assistant',showTxt);
+  }catch{
+    document.getElementById('neg-chat').lastElementChild?.remove();
+    negAddMsg('assistant','❌ Ошибка анализа.');
+  }finally{
+    document.getElementById('neg-spinner').style.display='none';
+  }
+}
+
+function renderNegatives(){
+  if(!negKeywords.length) return;
+  document.getElementById('neg-count').textContent=negKeywords.length;
+  document.getElementById('neg-list').innerHTML=negKeywords.map(k=>`<span class="kw-chip" style="border-color:rgba(239,68,68,0.3);color:var(--danger)">${k}</span>`).join('');
+  document.getElementById('neg-result-section').style.display='block';
+}
+
+function downloadNegatives(){
+  const rows=[['Keyword','Match Type'],...negKeywords.map(k=>[k,'NEGATIVE_EXACT'])];
+  const csv=rows.map(r=>r.map(v=>`"${v}"`).join(',')).join('\n');
+  const blob=new Blob([csv],{type:'text/csv'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url;a.download='negative_keywords.csv';a.click();
+  URL.revokeObjectURL(url);
+}
+
+function copyNegatives(){
+  navigator.clipboard.writeText(negKeywords.join('\n')).then(()=>{
+    const btn=event.target;
+    btn.textContent='✅ Скопировано!';
+    setTimeout(()=>btn.textContent='📋 Копировать список',2000);
+  });
+}
+
+function resetNegatives(){
+  negCsvData=[];negKeywords=[];
+  document.getElementById('neg-upload').style.display='block';
+  document.getElementById('neg-dashboard').style.display='none';
+  document.getElementById('neg-chat').innerHTML='';
+  document.getElementById('neg-result-section').style.display='none';
+  document.getElementById('neg-file').value='';
 }
 </script>
 </body>
