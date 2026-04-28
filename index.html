@@ -274,7 +274,25 @@ textarea.chat-input{resize:vertical;min-height:120px;line-height:1.6}
         </div>
       </div>
       <div class="form-group">
-        <label class="form-label">Ключевые слова конкурентов (каждое с новой строки)</label>
+        <label class="form-label">📁 Загрузи файл с ключевыми словами конкурентов — Excel или CSV</label>
+        <div class="upload-zone" id="comp-zone" onclick="document.getElementById('comp-file').click()" style="padding:28px 24px;margin-bottom:12px">
+          <div class="upload-icon" style="font-size:30px;margin-bottom:8px">📊</div>
+          <div class="upload-title" style="font-size:13px">Перетащи или выбери файл</div>
+          <div class="upload-sub">Excel (.xlsx, .xls) или CSV — одна колонка с ключевыми словами<br/>5 конкурентов, 500 ключевых слов — всё загрузится за секунду</div>
+          <input id="comp-file" type="file" accept=".csv,.xlsx,.xls,.txt" style="display:none"/>
+        </div>
+        <div id="comp-file-info" style="display:none;margin-bottom:12px;display:none">
+          <div class="file-chip" style="margin-bottom:0">
+            <span>📊</span>
+            <span id="comp-file-name" style="color:var(--text)"></span>
+            <span style="color:var(--border)">·</span>
+            <span id="comp-kw-count" style="color:var(--accent)"></span>
+            <button onclick="clearCompFile()" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:11px;padding:0 4px">✕</button>
+          </div>
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">ИЛИ вводи ключевые слова вручную (каждое с новой строки)</label>
         <textarea id="gen-keywords" class="chat-input" placeholder="water bottle stainless steel&#10;insulated water bottle 32oz&#10;metal water bottle bpa free&#10;leakproof water bottle&#10;wide mouth water bottle"></textarea>
       </div>
       <div style="display:flex;gap:10px;flex-wrap:wrap">
@@ -469,6 +487,46 @@ async function azSend(){
 document.getElementById('az-input').addEventListener('keydown',e=>{if(e.key==='Enter')azSend()});
 
 // ─── GENERATOR ───────────────────────────────────────────
+// File upload for competitor keywords
+let compKeywords=[];
+const compZone=document.getElementById('comp-zone');
+compZone.addEventListener('dragover',e=>{e.preventDefault();compZone.classList.add('drag')});
+compZone.addEventListener('dragleave',()=>compZone.classList.remove('drag'));
+compZone.addEventListener('drop',e=>{e.preventDefault();compZone.classList.remove('drag');handleCompetitorFile(e.dataTransfer.files[0])});
+document.getElementById('comp-file').addEventListener('change',e=>handleCompetitorFile(e.target.files[0]));
+
+function handleCompetitorFile(file){
+  if(!file) return;
+  const r=new FileReader();
+  r.onload=e=>{
+    const text=e.target.result;
+    let keywords=[];
+    // Parse all cells: split by newlines and commas
+    text.split('\n').forEach(line=>{
+      line.split(/[,;\t]/).forEach(cell=>{
+        const kw=cell.trim().replace(/"/g,'').replace(/\r/g,'');
+        if(kw&&kw.length>2&&kw.length<80&&!/^\d+([.,]\d+)?$/.test(kw)) keywords.push(kw);
+      });
+    });
+    keywords=[...new Set(keywords)]; // deduplicate
+    compKeywords=keywords;
+    document.getElementById('comp-file-name').textContent=file.name;
+    document.getElementById('comp-kw-count').textContent=keywords.length+' ключевых слов';
+    document.getElementById('comp-file-info').style.display='block';
+    compZone.style.display='none';
+    // Merge into textarea
+    const ta=document.getElementById('gen-keywords');
+    const existing=ta.value.trim();
+    ta.value=existing?existing+'\n'+keywords.join('\n'):keywords.join('\n');
+  };
+  r.readAsText(file,'UTF-8');
+}
+function clearCompFile(){
+  compKeywords=[];
+  document.getElementById('comp-file').value='';
+  document.getElementById('comp-file-info').style.display='none';
+  compZone.style.display='block';
+}
 function genSetLoading(v){
   genLoading=v;
   document.getElementById('gen-spinner').style.display=v?'inline-block':'none';
