@@ -352,6 +352,18 @@ textarea.chat-input{resize:vertical;min-height:120px;line-height:1.6}
       <button class="btn-success" onclick="downloadCSV()">⬇️ Скачать CSV для Bulk Upload</button>
       <span style="font-size:11px;color:var(--muted);margin-left:12px">Готов к загрузке в Amazon Campaign Manager</span>
     </div>
+
+    <div id="gen-neg-section" class="section" style="display:none;margin-top:20px">
+      <div class="section-header"><span>🚫</span> Стартовые минус-слова (<span id="gen-neg-count">0</span>)</div>
+      <div class="section-body">
+        <div style="font-size:11px;color:var(--muted);margin-bottom:12px">Собраны на основе твоих ключевых слов — добавь их в кампании перед запуском, чтобы не сливать бюджет с первого дня</div>
+        <div id="gen-neg-list" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px"></div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap">
+          <button class="btn-success" onclick="downloadGenNegatives()">⬇️ Скачать минус-слова CSV</button>
+          <button class="btn-secondary" onclick="copyGenNegatives()">📋 Копировать</button>
+        </div>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -455,7 +467,7 @@ textarea.chat-input{resize:vertical;min-height:120px;line-height:1.6}
 <script>
 // ─── STATE ───────────────────────────────────────────────
 let azCsvData=[], azReportType='', azHistory=[], azLoading=false;
-let genLoading=false, genHistory=[], genCsvContent='', genCampaigns=[];
+let genLoading=false, genHistory=[], genCsvContent='', genCampaigns=[], genNegKeywords=[];
 
 // ─── NAVIGATION ──────────────────────────────────────────
 function goHome(){
@@ -664,7 +676,8 @@ function genClear(){
   document.getElementById('gen-product').value='';
   document.getElementById('gen-output').style.display='none';
   document.getElementById('gen-chat').innerHTML='';
-  genHistory=[];genCsvContent='';genCampaigns=[];
+  document.getElementById('gen-neg-section').style.display='none';
+  genHistory=[];genCsvContent='';genCampaigns=[];genNegKeywords=[];
 }
 async function genStart(){
   const product=document.getElementById('gen-product').value.trim();
@@ -691,14 +704,25 @@ async function genStart(){
 3. SP_BROAD - широкое совпадение, топ-15 ключей для охвата
 4. SP_COMPETITOR - таргетинг на конкурентов (product targeting)
 
-После текстового анализа ОБЯЗАТЕЛЬНО выведи JSON в точно таком формате (без markdown, просто JSON после текста):
+После текстового анализа ОБЯЗАТЕЛЬНО выведи оба JSON блока в точно таком формате (без markdown):
+
 CAMPAIGNS_JSON:
 [
   {"name":"AUTO_[product]","type":"AUTO","matchType":"AUTO","budget":X,"defaultBid":Y,"keywords":[],"notes":"..."},
   {"name":"SP_EXACT_[product]","type":"SPONSORED_PRODUCTS","matchType":"EXACT","budget":X,"defaultBid":Y,"keywords":["kw1","kw2"],"notes":"..."},
   {"name":"SP_BROAD_[product]","type":"SPONSORED_PRODUCTS","matchType":"BROAD","budget":X,"defaultBid":Y,"keywords":["kw1","kw2"],"notes":"..."},
   {"name":"SP_COMPETITOR_[product]","type":"SPONSORED_PRODUCTS","matchType":"EXACT","budget":X,"defaultBid":Y,"keywords":["competitor brand 1","competitor brand 2"],"notes":"..."}
-]`;
+]
+
+NEGATIVES_JSON:
+["минус-слово1","минус-слово2","минус-слово3"]
+
+Для NEGATIVES_JSON собери стартовые минус-слова на основе ниши и ключевых слов:
+- Информационные запросы (how to, diy, free, review, what is)
+- Нерелевантные материалы или форматы (если не подходят)
+- Детские/возрастные категории (если не нужны)
+- Названия конкурентных брендов (они уйдут в SP_COMPETITOR)
+- Слова, которые явно не соответствуют продукту`;
 
   const usr=`Продукт: ${product}
 Маркетплейс: ${marketplace}
@@ -721,8 +745,8 @@ ${keywords}
     document.getElementById('gen-chat').lastElementChild?.remove();
     genHistory=[{role:'user',content:usr},{role:'assistant',content:txt}];
 
-    // Parse JSON
-    const jsonMatch=txt.match(/CAMPAIGNS_JSON:\s*([\s\S]+)/);
+    const jsonMatch=txt.match(/CAMPAIGNS_JSON:\s*(\[[\s\S]+?\])\s*(?=NEGATIVES_JSON:|$)/);
+    const negMatch=txt.match(/NEGATIVES_JSON:\s*(\[[\s\S]+?\])/);
     let analysisText=txt;
     if(jsonMatch){
       analysisText=txt.replace(/CAMPAIGNS_JSON:[\s\S]+/,'').trim();
@@ -734,11 +758,40 @@ ${keywords}
         document.getElementById('gen-csv-section').style.display='block';
       }catch(e){console.warn('JSON parse error',e)}
     }
+    if(negMatch){
+      try{
+        genNegKeywords=JSON.parse(negMatch[1].trim());
+        renderGenNegatives();
+      }catch(e){console.warn('NEG JSON parse error',e)}
+    }
     genAddMsg('assistant',analysisText);
   }catch{
     document.getElementById('gen-chat').lastElementChild?.remove();
     genAddMsg('assistant','❌ Ошибка. Проверь интернет.');
   }finally{genSetLoading(false)}
+}
+
+function renderGenNegatives(){
+  if(!genNegKeywords.length) return;
+  document.getElementById('gen-neg-count').textContent=genNegKeywords.length;
+  document.getElementById('gen-neg-list').innerHTML=genNegKeywords.map(k=>`<span class="kw-chip" style="border-color:rgba(239,68,68,0.3);color:var(--danger)">${k}</span>`).join('');
+  document.getElementById('gen-neg-section').style.display='block';
+}
+function downloadGenNegatives(){
+  const rows=[['Keyword','Match Type'],...genNegKeywords.map(k=>[k,'NEGATIVE_EXACT'])];
+  const csv=rows.map(r=>r.map(v=>`"${v}"`).join(',')).join('\n');
+  const blob=new Blob([csv],{type:'text/csv'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url;a.download='negative_keywords_start.csv';a.click();
+  URL.revokeObjectURL(url);
+}
+function copyGenNegatives(){
+  navigator.clipboard.writeText(genNegKeywords.join('\n')).then(()=>{
+    const btn=event.target;
+    btn.textContent='✅ Скопировано!';
+    setTimeout(()=>btn.textContent='📋 Копировать',2000);
+  });
 }
 
 function renderCampaigns(){
