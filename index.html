@@ -147,6 +147,7 @@ textarea.chat-input{resize:vertical;min-height:120px;line-height:1.6}
     <button class="mode-chip" id="chip-generate" onclick="goMode('generate')">Запуск</button>
     <button class="mode-chip" id="chip-calc" onclick="goMode('calc')">Калькулятор</button>
     <button class="mode-chip" id="chip-negatives" onclick="goMode('negatives')">Минус-слова</button>
+    <button class="mode-chip" id="chip-listing" onclick="goMode('listing')">Листинг</button>
   </div>
   <div class="badge" style="margin-left:auto" id="nav-badge">AI Powered</div>
 </nav>
@@ -204,10 +205,20 @@ textarea.chat-input{resize:vertical;min-height:120px;line-height:1.6}
         <span class="ctag">CSV экспорт</span>
       </div>
     </div>
+    <div class="card" onclick="goMode('listing')">
+      <span class="card-arrow">→</span>
+      <div class="card-icon">✍️</div>
+      <div class="card-title">Оптимизатор листинга</div>
+      <div class="card-desc">Вставь title и bullets — AI перепишет листинг с нужными ключевыми словами для лучшего ранжирования на Amazon</div>
+      <div class="card-tags">
+        <span class="ctag">Title</span>
+        <span class="ctag">Bullet Points</span>
+        <span class="ctag">A9 алгоритм</span>
+        <span class="ctag">SEO</span>
+      </div>
+    </div>
   </div>
 </div>
-
-<!-- ═══════════════════ ANALYZE ═══════════════════ -->
 <div id="analyze" style="display:none">
   <button class="back-btn" onclick="goHome()">← Назад</button>
 
@@ -464,6 +475,83 @@ textarea.chat-input{resize:vertical;min-height:120px;line-height:1.6}
   </div>
 </div>
 
+<!-- ═══════════════════ LISTING OPTIMIZER ═══════════════════ -->
+<div id="listing" style="display:none">
+  <button class="back-btn" onclick="goHome()">← Назад</button>
+
+  <div class="section">
+    <div class="section-header"><span>✍️</span> Текущий листинг</div>
+    <div class="section-body">
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Маркетплейс</label>
+          <select id="lst-marketplace" class="small-input">
+            <option>Amazon.com (US)</option>
+            <option>Amazon.co.uk (UK)</option>
+            <option>Amazon.de (DE)</option>
+            <option>Amazon.es (ES)</option>
+            <option>Amazon.fr (FR)</option>
+            <option>Amazon.it (IT)</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Категория</label>
+          <input id="lst-category" class="small-input" placeholder="напр. Kitchen & Dining, Sports & Outdoors"/>
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Title (текущий заголовок)</label>
+        <textarea id="lst-title" class="chat-input" style="min-height:60px" placeholder="Stainless Steel Water Bottle 32oz - Insulated Metal Water Bottle with Leak Proof Lid"></textarea>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Bullet Points (каждый с новой строки)</label>
+        <textarea id="lst-bullets" class="chat-input" placeholder="• Keeps drinks cold 24 hours&#10;• BPA free stainless steel&#10;• Leak proof lid&#10;• Wide mouth for easy cleaning&#10;• Perfect for gym and outdoor"></textarea>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Ключевые слова для вставки (опционально)</label>
+        <textarea id="lst-keywords" class="chat-input" style="min-height:70px" placeholder="insulated water bottle, stainless steel bottle, sports water bottle, thermal flask..."></textarea>
+      </div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap">
+        <button class="btn-primary" id="lst-btn" onclick="listingOptimize()">✍️ Оптимизировать листинг</button>
+        <button class="btn-secondary" onclick="listingClear()">Очистить</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="lst-output" style="display:none">
+    <div class="section">
+      <div class="section-header">
+        <span>🤖</span> AI Анализ и оптимизация
+        <div id="lst-spinner" class="spinner" style="display:none"></div>
+      </div>
+      <div class="section-body">
+        <div id="lst-chat"></div>
+      </div>
+    </div>
+
+    <div id="lst-result" style="display:none">
+      <div class="section">
+        <div class="section-header"><span>⭐</span> Оценка текущего листинга</div>
+        <div class="section-body" id="lst-scores" style="display:flex;gap:12px;flex-wrap:wrap"></div>
+      </div>
+      <div class="section">
+        <div class="section-header"><span>🚀</span> Оптимизированный Title</div>
+        <div class="section-body">
+          <div id="lst-new-title" style="font-size:14px;line-height:1.7;padding:14px;background:var(--bg);border:1px solid rgba(240,165,0,0.3);border-radius:8px;margin-bottom:12px"></div>
+          <button class="btn-secondary" onclick="copyText('lst-new-title')">📋 Копировать title</button>
+        </div>
+      </div>
+      <div class="section">
+        <div class="section-header"><span>📝</span> Оптимизированные Bullet Points</div>
+        <div class="section-body">
+          <div id="lst-new-bullets" style="font-size:13px;line-height:2;padding:14px;background:var(--bg);border:1px solid rgba(240,165,0,0.3);border-radius:8px;margin-bottom:12px"></div>
+          <button class="btn-secondary" onclick="copyText('lst-new-bullets')">📋 Копировать bullets</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
 <script>
 // ─── STATE ───────────────────────────────────────────────
 let azCsvData=[], azReportType='', azHistory=[], azLoading=false;
@@ -471,7 +559,7 @@ let genLoading=false, genHistory=[], genCsvContent='', genCampaigns=[], genNegKe
 
 // ─── NAVIGATION ──────────────────────────────────────────
 function goHome(){
-  ['home','analyze','generate','calc','negatives'].forEach(id=>{
+  ['home','analyze','generate','calc','negatives','listing'].forEach(id=>{
     document.getElementById(id).style.display = id==='home' ? 'block' : 'none';
   });
   document.getElementById('nav-mode').style.display='none';
@@ -479,12 +567,12 @@ function goHome(){
 }
 function goMode(mode){
   document.getElementById('home').style.display='none';
-  ['analyze','generate','calc','negatives'].forEach(id=>{
+  ['analyze','generate','calc','negatives','listing'].forEach(id=>{
     document.getElementById(id).style.display = id===mode ? 'block' : 'none';
   });
   document.getElementById('nav-mode').style.display='flex';
   document.getElementById('nav-badge').style.marginLeft='';
-  ['analyze','generate','calc','negatives'].forEach(id=>{
+  ['analyze','generate','calc','negatives','listing'].forEach(id=>{
     document.getElementById('chip-'+id).classList.toggle('active', id===mode);
   });
 }
@@ -869,6 +957,125 @@ async function genSend(){
   finally{genSetLoading(false)}
 }
 document.getElementById('gen-input').addEventListener('keydown',e=>{if(e.key==='Enter')genSend()});
+// ─── LISTING OPTIMIZER ───────────────────────────────────
+function listingClear(){
+  ['lst-title','lst-bullets','lst-keywords'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('lst-output').style.display='none';
+  document.getElementById('lst-result').style.display='none';
+  document.getElementById('lst-chat').innerHTML='';
+}
+function lstAddMsg(role,content){
+  const div=document.getElementById('lst-chat');
+  const isUser=role==='user';
+  div.innerHTML+=`<div class="msg-row ${isUser?'user':''}"><div class="avatar ${isUser?'me':'ai'}">${isUser?'Вы':'AI'}</div><div class="bubble ${isUser?'user':'ai'}">${content}</div></div>`;
+  div.scrollTop=div.scrollHeight;
+}
+function copyText(id){
+  const text=document.getElementById(id).innerText;
+  navigator.clipboard.writeText(text).then(()=>{
+    const btns=document.querySelectorAll('.btn-secondary');
+    btns.forEach(b=>{if(b.onclick&&b.onclick.toString().includes(id)){b.textContent='✅ Скопировано!';setTimeout(()=>b.textContent=b.textContent.includes('title')?'📋 Копировать title':'📋 Копировать bullets',2000)}});
+  });
+}
+async function listingOptimize(){
+  const title=document.getElementById('lst-title').value.trim();
+  const bullets=document.getElementById('lst-bullets').value.trim();
+  const marketplace=document.getElementById('lst-marketplace').value;
+  const category=document.getElementById('lst-category').value.trim();
+  const keywords=document.getElementById('lst-keywords').value.trim();
+  if(!title&&!bullets){alert('Введи title или bullet points');return}
+  document.getElementById('lst-output').style.display='block';
+  document.getElementById('lst-result').style.display='none';
+  document.getElementById('lst-chat').innerHTML='';
+  document.getElementById('lst-spinner').style.display='inline-block';
+  document.getElementById('lst-btn').disabled=true;
+  lstAddMsg('assistant','⏳ Анализирую листинг и подготавливаю оптимизацию...');
+
+  const sys=`Ты эксперт по Amazon SEO и оптимизации листингов. Отвечай ТОЛЬКО на русском.
+Твоя задача: проанализировать текущий листинг и переписать его для максимального ранжирования в поиске Amazon по алгоритму A9/A10.
+
+Правила Amazon для Title:
+- Максимум 200 символов
+- Первые слова — самые важные ключевые слова
+- Формат: Бренд + Главный ключ + Характеристики + Размер/Цвет
+- Каждое слово с большой буквы (Title Case)
+- Не использовать: цену, промо, субъективные слова (best, amazing)
+
+Правила Bullet Points (5 штук):
+- Начинать с заглавных букв
+- Каждый пункт — конкретная выгода + характеристика
+- Вставлять secondary keywords органично
+- Не повторять слова из title
+- Длина каждого: 150-300 символов
+
+После анализа выведи JSON в ТОЧНО таком формате (без markdown):
+LISTING_JSON:
+{
+  "scores": [
+    {"label":"Title SEO","score":7,"max":10,"comment":"..."},
+    {"label":"Ключевые слова","score":6,"max":10,"comment":"..."},
+    {"label":"Читаемость","score":8,"max":10,"comment":"..."},
+    {"label":"Длина title","score":9,"max":10,"comment":"..."},
+    {"label":"Bullets","score":7,"max":10,"comment":"..."}
+  ],
+  "newTitle":"...",
+  "newBullets":["• ...","• ...","• ...","• ...","• ..."]
+}`;
+
+  const usr=`Маркетплейс: ${marketplace}
+Категория: ${category||'не указана'}
+${keywords?'Ключевые слова для вставки: '+keywords:''}
+
+Текущий Title:
+${title||'(не указан)'}
+
+Текущие Bullet Points:
+${bullets||'(не указаны)'}
+
+Задача:
+1. Проанализируй текущий листинг — что сделано хорошо, что плохо
+2. Выяви недостающие ключевые слова и упущенные выгоды
+3. Перепиши Title по правилам Amazon A9
+4. Перепиши 5 Bullet Points с ключевыми словами и выгодами
+5. Выведи LISTING_JSON с оценками и оптимизированным контентом`;
+
+  try{
+    const txt=await callClaude(sys,[{role:'user',content:usr}]);
+    document.getElementById('lst-chat').lastElementChild?.remove();
+    const jm=txt.match(/LISTING_JSON:\s*(\{[\s\S]+\})/);
+    let showTxt=txt;
+    if(jm){
+      showTxt=txt.replace(/LISTING_JSON:\s*\{[\s\S]+\}/,'').trim();
+      try{
+        const data=JSON.parse(jm[1].trim());
+        // Scores
+        const sc=document.getElementById('lst-scores');
+        sc.innerHTML=data.scores.map(s=>{
+          const pct=Math.round(s.score/s.max*100);
+          const c=pct>=80?'var(--success)':pct>=60?'var(--accent)':'var(--danger)';
+          return `<div class="metric fade" style="min-width:120px">
+            <div class="metric-label">${s.label}</div>
+            <div class="metric-value" style="color:${c}">${s.score}/${s.max}</div>
+            <div style="font-size:10px;color:var(--muted);margin-top:4px">${s.comment}</div>
+          </div>`;
+        }).join('');
+        // New title
+        document.getElementById('lst-new-title').textContent=data.newTitle||'';
+        // New bullets
+        document.getElementById('lst-new-bullets').innerHTML=data.newBullets.map(b=>`<div style="padding:4px 0;border-bottom:1px solid var(--border)">${b}</div>`).join('');
+        document.getElementById('lst-result').style.display='block';
+      }catch(e){console.warn('JSON parse',e)}
+    }
+    lstAddMsg('assistant',showTxt||'✅ Оптимизация готова!');
+  }catch{
+    document.getElementById('lst-chat').lastElementChild?.remove();
+    lstAddMsg('assistant','❌ Ошибка. Попробуй ещё раз.');
+  }finally{
+    document.getElementById('lst-spinner').style.display='none';
+    document.getElementById('lst-btn').disabled=false;
+  }
+}
+
 // ─── CLAUDE API ──────────────────────────────────────────
 async function callClaude(system,messages){
   const res=await fetch('https://api.anthropic.com/v1/messages',{
